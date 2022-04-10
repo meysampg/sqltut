@@ -33,11 +33,14 @@ func main() {
 		prompt()
 		l, _ := readInput(reader)
 		switch commands.Process(l) {
-		case commands.MetaCommandSuccess, commands.StatementCommandSuccess:
+		case commands.MetaCommandSuccess:
 			continue
+		case commands.StatementCommandSuccess:
+			fmt.Println("Executed.")
 		case commands.MetaUnrecognizedCommand:
 			fmt.Printf("Unrecognized command '%s'\n", string(l))
-			continue
+		case commands.PrepareUnrecognizedStatement:
+			fmt.Printf("Unrecognized keyword at start of '%s'.\n", string(l))
 		}
 	}
 }
