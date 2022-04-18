@@ -25,14 +25,14 @@ func NewTable() *Table {
 	}
 }
 
-func (t *Table) rowSlot() ([]byte, uint32) {
-	pageNum := t.NumRows / RowsPerPage
+func (t *Table) rowSlot(rowNum uint32) ([]byte, uint32) {
+	pageNum := rowNum / RowsPerPage
 	if t.Pages[pageNum] == nil {
 		t.Pages[pageNum] = make([]byte, PageSize, PageSize)
 	}
 	page := t.Pages[pageNum]
 
-	rowOffset := t.NumRows % RowsPerPage
+	rowOffset := rowNum % RowsPerPage
 	byteOffset := rowOffset * RowSize
 
 	return page, byteOffset
@@ -43,7 +43,7 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 		return engine.ExecuteTableFull
 	}
 
-	page, byteOffset := t.rowSlot()
+	page, byteOffset := t.rowSlot(t.NumRows)
 	serializedRow := Serialize(binary.LittleEndian, row)
 
 	copy(page[byteOffset:], serializedRow)
@@ -51,4 +51,19 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 	t.NumRows++
 
 	return engine.ExecuteSuccess
+}
+
+func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
+	var result []*engine.Row
+	var i uint32
+	for i = 0; i < t.NumRows; i++ {
+		page, byteOffset := t.rowSlot(i)
+		row := Deserialize(binary.LittleEndian, page[byteOffset:byteOffset+RowSize])
+		if row == nil {
+			return nil, engine.ExecuteRowNotFound
+		}
+		result = append(result, row)
+	}
+
+	return result, engine.ExecuteSuccess
 }

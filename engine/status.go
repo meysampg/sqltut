@@ -1,15 +1,17 @@
 package engine
 
-type ExecutionStatus = uint8
+type ExecutionStatus = uint16
 
 const (
-	PrepareSuccess               ExecutionStatus = 1
-	PrepareUnrecognizedStatement ExecutionStatus = 2
-	PrepareSyntaxError           ExecutionStatus = 3
+	PrepareSuccess               ExecutionStatus = 0xA01
+	PrepareUnrecognizedStatement ExecutionStatus = 0xA02
+	PrepareSyntaxError           ExecutionStatus = 0xA03
 
-	ExecuteSuccess   ExecutionStatus = 10
-	ExecuteTableFull ExecutionStatus = 11
+	ExecuteSuccess     ExecutionStatus = 0xB01
+	ExecuteTableFull   ExecutionStatus = 0xB02
+	ExecuteTableEmpty  ExecutionStatus = 0xB03
+	ExecuteRowNotFound ExecutionStatus = 0xB04
 
-	MetaCommandSuccess      ExecutionStatus = 20
-	MetaUnrecognizedCommand ExecutionStatus = 21
+	MetaCommandSuccess      ExecutionStatus = 0xC01
+	MetaUnrecognizedCommand ExecutionStatus = 0xC02
 )

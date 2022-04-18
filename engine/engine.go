@@ -17,7 +17,7 @@ func Equal(a []byte, b string) bool {
 	return bytes.Equal(a, []byte(b))
 }
 
-func execute(command []byte, storage Storage) uint8 {
+func execute(command []byte, storage Storage) ExecutionStatus {
 	statement, status := PrepareStatement(command)
 	if status != PrepareSuccess {
 		return status
@@ -27,7 +27,13 @@ func execute(command []byte, storage Storage) uint8 {
 	case StatementInsert:
 		return storage.Insert(statement.RowToInsert)
 	case StatementSelect:
-		fmt.Println("This is where we would do a select.")
+		result, status := storage.Select()
+		if status == ExecuteSuccess {
+			for _, row := range result {
+				fmt.Printf("%#v\n", row)
+			}
+		}
+		return status
 	}
 
 	return PrepareSuccess
