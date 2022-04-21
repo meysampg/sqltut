@@ -7,7 +7,7 @@ import (
 
 func Process(command []byte, storage Storage) ExecutionStatus {
 	if bytes.HasPrefix(command, []byte(".")) {
-		return processMeta(command)
+		return processMeta(command, storage)
 	} else {
 		return execute(command, storage)
 	}

@@ -2,12 +2,23 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
 
 	"github.com/meysampg/sqltut/engine"
 	"github.com/meysampg/sqltut/engine/storage/arraylike"
 )
+
+var (
+	dbPath string
+)
+
+func init() {
+	flag.StringVar(&dbPath, "db-path", "./db", "Path of the DB file")
+
+	flag.Parse()
+}
 
 func prompt() {
 	fmt.Print("db > ")
@@ -31,7 +42,11 @@ func readInput(reader *bufio.Reader) ([]byte, error) {
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	table := arraylike.NewTable()
+	table, err := arraylike.DbOpen(dbPath)
+	if err != nil {
+		fmt.Println("Unable to open file")
+		os.Exit(int(engine.ExitFailure))
+	}
 
 	for {
 		prompt()
@@ -54,6 +69,8 @@ func main() {
 			fmt.Println("String is too long.")
 		case engine.PrepareNegativeId:
 			fmt.Println("ID must be positive.")
+		case engine.ExecutePageFetchError:
+			os.Exit(int(engine.ExecutePageFetchError))
 		}
 	}
 }

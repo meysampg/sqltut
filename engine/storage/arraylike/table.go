@@ -2,6 +2,8 @@ package arraylike
 
 import (
 	"encoding/binary"
+	"fmt"
+
 	"github.com/meysampg/sqltut/engine"
 )
 
@@ -15,27 +17,69 @@ const (
 
 type Table struct {
 	NumRows uint32
-	Pages   [][]byte
+	Pager   *Pager
 }
 
-func NewTable() *Table {
+func DbOpen(filename string) (*Table, error) {
+	pager, err := NewPager(filename)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Table{
-		NumRows: 0,
-		Pages:   make([][]byte, TableMaxPage, TableMaxPage),
-	}
+		NumRows: pager.FileLength / RowSize,
+		Pager:   pager,
+	}, nil
 }
 
-func (t *Table) rowSlot(rowNum uint32) ([]byte, uint32) {
-	pageNum := rowNum / RowsPerPage
-	if t.Pages[pageNum] == nil {
-		t.Pages[pageNum] = make([]byte, PageSize, PageSize)
-	}
-	page := t.Pages[pageNum]
+func (t *Table) Close() (engine.ExecutionStatus, error) {
+	pager := t.Pager
 
+	// flush pages and clean-up them
+	numFullPages := t.NumRows / RowsPerPage
+	for i := 0; i < int(numFullPages); i++ {
+		if pager.Pages[i] == nil {
+			continue
+		}
+		if err := pager.Flush(i, PageSize); err != nil {
+			return engine.ExitFailure, err
+		}
+		pager.Pages[i] = nil
+	}
+
+	// if we have partial page, we should write them to disk too.
+	numAdditionalRows := t.NumRows % RowsPerPage
+	if numAdditionalRows > 0 && pager.Pages[numFullPages] != nil { // partial page only can be occurred on the last page
+		if err := pager.Flush(int(numFullPages), numAdditionalRows*RowSize); err != nil {
+			return engine.ExitFailure, err
+		}
+		pager.Pages[int(numFullPages)] = nil
+	}
+
+	// close the DB file
+	if err := pager.FileDescriptor.Close(); err != nil {
+		return engine.ExitFailure, fmt.Errorf("Error closing db file.")
+	}
+
+	for i := 0; i < int(TableMaxPage); i++ {
+		if pager.Pages[i] != nil {
+			pager.Pages[i] = nil
+		}
+	}
+
+	return engine.ExecuteSuccess, nil
+}
+
+func (t *Table) rowSlot(rowNum uint32) ([]byte, uint32, error) {
+	pageNum := rowNum / RowsPerPage
+	page, err := t.Pager.GetPage(pageNum)
+	if err != nil {
+		return nil, 0, err
+	}
 	rowOffset := rowNum % RowsPerPage
 	byteOffset := rowOffset * RowSize
 
-	return page, byteOffset
+	return page, byteOffset, nil
 }
 
 func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
@@ -43,7 +87,11 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 		return engine.ExecuteTableFull
 	}
 
-	page, byteOffset := t.rowSlot(t.NumRows)
+	page, byteOffset, err := t.rowSlot(t.NumRows)
+	if err != nil {
+		fmt.Println(err)
+		return engine.ExecutePageFetchError
+	}
 	serializedRow := Serialize(binary.LittleEndian, row)
 
 	copy(page[byteOffset:], serializedRow)
@@ -57,7 +105,11 @@ func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 	var result []*engine.Row
 	var i uint32
 	for i = 0; i < t.NumRows; i++ {
-		page, byteOffset := t.rowSlot(i)
+		page, byteOffset, err := t.rowSlot(i)
+		if err != nil {
+			fmt.Println(err)
+			return nil, engine.ExecutePageFetchError
+		}
 		row := Deserialize(binary.LittleEndian, page[byteOffset:byteOffset+RowSize])
 		if row == nil {
 			return nil, engine.ExecuteRowNotFound

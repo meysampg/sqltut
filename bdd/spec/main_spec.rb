@@ -5,11 +5,12 @@ describe 'database' do
 
   after do
     `rm /tmp/sqltut/___sqltut_cmd`
+    `rm test.db`
   end
 
   def run_script(commands)
     raw_output = nil
-    IO.popen("/tmp/sqltut/___sqltut_cmd", "r+") do |pipe|
+    IO.popen("/tmp/sqltut/___sqltut_cmd -db-path test.db", "r+") do |pipe|
       commands.each do |command|
         pipe.puts command
       end
@@ -88,6 +89,26 @@ describe 'database' do
     expect(result).to match_array([
       "db > Error on executing `insert -1 cstack foo@bar.com`.",
       "db > Executed.",
+      "db > ",
+    ])
+  end
+
+  it 'keeps data after closing connection' do
+    result1 = run_script([
+      "insert 1 user1 person1@example.com",
+      ".exit",
+    ])
+    expect(result1).to match_array([
+      "db > Executed.",
+      "db > ",
+    ])
+    result2 = run_script([
+      "select",
+      ".exit",
+    ])
+    expect(result2).to match_array([
+      "db > (1, user1, person1@example.com)",
+      "Executed.",
       "db > ",
     ])
   end

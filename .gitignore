@@ -11,6 +11,9 @@
 *.dll
 *.so
 *.dylib
+/cmd/cmd
+/cmd/db
+/db
 
 # Test binary, built with `go test -c`
 *.test
