@@ -1,5 +1,14 @@
 SQLTut
 ======
+```shell
+$ ./cmd -h
+Usage of ./cmd:
+  -db-path string
+      Path of the DB file (default "./db")
+  -engine string
+      Engine to store and query (default "arraylike")
+```
+
 
 ## TODO
  - Change structure to follow this architecture:

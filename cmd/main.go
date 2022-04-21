@@ -11,11 +11,13 @@ import (
 )
 
 var (
-	dbPath string
+	dbPath   string
+	dbEngine string
 )
 
 func init() {
 	flag.StringVar(&dbPath, "db-path", "./db", "Path of the DB file")
+	flag.StringVar(&dbEngine, "engine", "arraylike", "Engine to store and query")
 
 	flag.Parse()
 }
@@ -40,9 +42,18 @@ func readInput(reader *bufio.Reader) ([]byte, error) {
 	return result, nil
 }
 
+func getEngine(typ, path string) (engine.Storage, error) {
+	switch typ {
+	case "arraylike":
+		return arraylike.DbOpen(path)
+	default:
+		return nil, fmt.Errorf("Engine not found, %s", typ)
+	}
+}
+
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	table, err := arraylike.DbOpen(dbPath)
+	table, err := getEngine(dbEngine, dbPath)
 	if err != nil {
 		fmt.Println("Unable to open file")
 		os.Exit(int(engine.ExitFailure))
