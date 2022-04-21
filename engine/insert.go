@@ -10,6 +10,12 @@ func prepareInsert(command []byte, statement *Statement) ExecutionStatus {
 	if n < 3 || err != nil {
 		return PrepareSyntaxError
 	}
+	if len(row.Email) > 255 || len(row.Username) > 255 {
+		return PrepareStringTooLong
+	}
+	if row.Id < 0 {
+		return PrepareNegativeId
+	}
 	statement.RowToInsert = &row
 
 	return PrepareSuccess

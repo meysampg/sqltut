@@ -6,6 +6,8 @@ const (
 	PrepareSuccess               ExecutionStatus = 0xA01
 	PrepareUnrecognizedStatement ExecutionStatus = 0xA02
 	PrepareSyntaxError           ExecutionStatus = 0xA03
+	PrepareStringTooLong         ExecutionStatus = 0xA04
+	PrepareNegativeId            ExecutionStatus = 0xA05
 
 	ExecuteSuccess     ExecutionStatus = 0xB01
 	ExecuteTableFull   ExecutionStatus = 0xB02

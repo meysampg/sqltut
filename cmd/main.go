@@ -3,9 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"os"
+
 	"github.com/meysampg/sqltut/engine"
 	"github.com/meysampg/sqltut/engine/storage/arraylike"
-	"os"
 )
 
 func prompt() {
@@ -39,7 +40,7 @@ func main() {
 		case engine.MetaCommandSuccess:
 			continue
 		case engine.ExecuteTableFull:
-			fmt.Println("Table is full.")
+			fmt.Println("Error: Table full.")
 			continue
 		case engine.PrepareSuccess, engine.ExecuteSuccess:
 			fmt.Println("Executed.")
@@ -49,6 +50,10 @@ func main() {
 			fmt.Printf("Unrecognized keyword at start of '%s'.\n", string(l))
 		case engine.PrepareSyntaxError:
 			fmt.Printf("Error on executing `%s`.\n", string(l))
+		case engine.PrepareStringTooLong:
+			fmt.Println("String is too long.")
+		case engine.PrepareNegativeId:
+			fmt.Println("ID must be positive.")
 		}
 	}
 }
