@@ -30,7 +30,7 @@ func execute(command []byte, storage Storage) ExecutionStatus {
 		result, status := storage.Select()
 		if status == ExecuteSuccess {
 			for _, row := range result {
-				fmt.Printf("%#v\n", row)
+				fmt.Println(row)
 			}
 		}
 		return status
