@@ -8,6 +8,7 @@ import (
 
 	"github.com/meysampg/sqltut/engine"
 	"github.com/meysampg/sqltut/engine/storage/arraylike"
+	"github.com/meysampg/sqltut/engine/storage/btree"
 )
 
 var (
@@ -46,6 +47,8 @@ func getEngine(typ, path string) (engine.Storage, error) {
 	switch typ {
 	case "arraylike":
 		return arraylike.DbOpen(path)
+	case "btree":
+		return btree.DbOpen(path)
 	default:
 		return nil, fmt.Errorf("Engine not found, %s", typ)
 	}
