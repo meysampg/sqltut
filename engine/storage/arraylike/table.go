@@ -32,6 +32,14 @@ func DbOpen(filename string) (*Table, error) {
 	}, nil
 }
 
+func (t *Table) RowNums() uint32 {
+	return t.NumRows
+}
+
+func (t *Table) GetPager() engine.Pager {
+	return t.Pager
+}
+
 func (t *Table) Close() (engine.ExecutionStatus, error) {
 	pager := t.Pager
 
@@ -70,9 +78,10 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 	return engine.ExecuteSuccess, nil
 }
 
-func (t *Table) rowSlot(rowNum uint32) ([]byte, uint32, error) {
+func cursorValue(cursor *engine.Cursor) ([]byte, uint32, error) {
+	rowNum := cursor.RowNum
 	pageNum := rowNum / RowsPerPage
-	page, err := t.Pager.GetPage(pageNum)
+	page, err := cursor.Table.GetPager().GetPage(pageNum)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -87,7 +96,8 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 		return engine.ExecuteTableFull
 	}
 
-	page, byteOffset, err := t.rowSlot(t.NumRows)
+	cursor := engine.TableEnd(t)
+	page, byteOffset, err := cursorValue(cursor)
 	if err != nil {
 		fmt.Println(err)
 		return engine.ExecutePageFetchError
@@ -103,9 +113,9 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 
 func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 	var result []*engine.Row
-	var i uint32
-	for i = 0; i < t.NumRows; i++ {
-		page, byteOffset, err := t.rowSlot(i)
+	cursor := engine.TableStart(t)
+	for !cursor.EndOfTable {
+		page, byteOffset, err := cursorValue(cursor)
 		if err != nil {
 			fmt.Println(err)
 			return nil, engine.ExecutePageFetchError
@@ -115,6 +125,7 @@ func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 			return nil, engine.ExecuteRowNotFound
 		}
 		result = append(result, row)
+		cursor.Advance()
 	}
 
 	return result, engine.ExecuteSuccess
