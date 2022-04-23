@@ -10,7 +10,7 @@ describe 'database' do
 
   def run_script(commands)
     raw_output = nil
-    IO.popen("/tmp/sqltut/___sqltut_cmd -db-path test.db", "r+") do |pipe|
+    IO.popen("/tmp/sqltut/___sqltut_cmd -db-path test.db -engine arraylike", "r+") do |pipe|
       commands.each do |command|
         pipe.puts command
       end
