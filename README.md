@@ -9,6 +9,9 @@ Usage of ./cmd:
       Engine to store and query (default "arraylike")
 ```
 
+## Specs
+ - BTree Leaf Node Format
+   ![leaf node format](https://user-images.githubusercontent.com/1416085/165701217-0f15f412-add0-4e6c-aaff-8ce9e93a014d.png)
 
 ## TODO
  - Change structure to follow this architecture:
