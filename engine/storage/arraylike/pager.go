@@ -30,6 +30,11 @@ func NewPager(filename string) (*Pager, error) {
 	}, nil
 }
 
+// GetNumPages save backward compatability
+func (p *Pager) GetNumPages() uint32 {
+	return 0
+}
+
 func (p *Pager) GetPage(pageNum uint32) ([]byte, error) {
 	if pageNum > TableMaxPage {
 		return nil, fmt.Errorf("Tried to fetch page number out of bounds. %d > %d\n", pageNum, TableMaxPage)

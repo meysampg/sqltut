@@ -78,7 +78,7 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 	return engine.ExecuteSuccess, nil
 }
 
-func cursorValue(cursor *engine.Cursor) ([]byte, uint32, error) {
+func cursorValue(cursor *Cursor) ([]byte, uint32, error) {
 	rowNum := cursor.RowNum
 	pageNum := rowNum / RowsPerPage
 	page, err := cursor.Table.GetPager().GetPage(pageNum)
@@ -96,7 +96,7 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 		return engine.ExecuteTableFull
 	}
 
-	cursor := engine.TableEnd(t)
+	cursor := TableEnd(t)
 	page, byteOffset, err := cursorValue(cursor)
 	if err != nil {
 		fmt.Println(err)
@@ -113,7 +113,7 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 
 func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 	var result []*engine.Row
-	cursor := engine.TableStart(t)
+	cursor := TableStart(t)
 	for !cursor.EndOfTable {
 		page, byteOffset, err := cursorValue(cursor)
 		if err != nil {

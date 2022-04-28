@@ -11,13 +11,12 @@ const (
 	PageSize     uint32 = 4096
 	TableMaxPage uint32 = 100
 	RowSize      uint32 = 4 + 255 + 255 // for the time being we assume string as a VARCHAR[255]
-	RowsPerPage  uint32 = PageSize / RowSize
-	TableMaxRows uint32 = RowsPerPage * TableMaxPage
 )
 
 type Table struct {
-	NumRows uint32
-	Pager   *Pager
+	NumRows     uint32
+	RootPageNum uint32
+	Pager       *Pager
 }
 
 func DbOpen(filename string) (*Table, error) {
@@ -44,8 +43,8 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 	pager := t.Pager
 
 	// flush pages and clean-up them
-	numFullPages := t.NumRows / RowsPerPage
-	for i := 0; i < int(numFullPages); i++ {
+	numPages := int(pager.GetNumPages())
+	for i := 0; i < numPages; i++ {
 		if pager.Pages[i] == nil {
 			continue
 		}
@@ -53,15 +52,6 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 			return engine.ExitFailure, err
 		}
 		pager.Pages[i] = nil
-	}
-
-	// if we have partial page, we should write them to disk too.
-	numAdditionalRows := t.NumRows % RowsPerPage
-	if numAdditionalRows > 0 && pager.Pages[numFullPages] != nil { // partial page only can be occurred on the last page
-		if err := pager.Flush(int(numFullPages), numAdditionalRows*RowSize); err != nil {
-			return engine.ExitFailure, err
-		}
-		pager.Pages[int(numFullPages)] = nil
 	}
 
 	// close the DB file
@@ -78,14 +68,14 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 	return engine.ExecuteSuccess, nil
 }
 
-func cursorValue(cursor *engine.Cursor) ([]byte, uint32, error) {
+func cursorValue(cursor *Cursor) ([]byte, uint32, error) {
 	rowNum := cursor.RowNum
-	pageNum := rowNum / RowsPerPage
+	pageNum := rowNum
 	page, err := cursor.Table.GetPager().GetPage(pageNum)
 	if err != nil {
 		return nil, 0, err
 	}
-	rowOffset := rowNum % RowsPerPage
+	rowOffset := rowNum
 	byteOffset := rowOffset * RowSize
 
 	return page, byteOffset, nil
@@ -96,7 +86,7 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 		return engine.ExecuteTableFull
 	}
 
-	cursor := engine.TableEnd(t)
+	cursor := TableEnd(t)
 	page, byteOffset, err := cursorValue(cursor)
 	if err != nil {
 		fmt.Println(err)
@@ -113,7 +103,7 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 
 func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 	var result []*engine.Row
-	cursor := engine.TableStart(t)
+	cursor := TableStart(t)
 	for !cursor.EndOfTable {
 		page, byteOffset, err := cursorValue(cursor)
 		if err != nil {

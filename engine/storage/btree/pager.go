@@ -10,6 +10,7 @@ type Pager struct {
 	FileDescriptor *os.File
 	FileLength     uint32
 	Pages          [][]byte
+	NumPages       uint32
 }
 
 func NewPager(filename string) (*Pager, error) {
@@ -23,16 +24,25 @@ func NewPager(filename string) (*Pager, error) {
 		return nil, err
 	}
 
+	if uint32(fileLength)%PageSize != 0 {
+		return nil, fmt.Errorf("Db file is not a whole number of pages. Corrupt file.")
+	}
+
 	return &Pager{
 		FileDescriptor: fd,
 		FileLength:     uint32(fileLength),
 		Pages:          make([][]byte, TableMaxPage, TableMaxPage),
+		NumPages:       uint32(fileLength) / PageSize,
 	}, nil
 }
 
+func (p *Pager) GetNumPages() uint32 {
+	return p.NumPages
+}
+
 func (p *Pager) GetPage(pageNum uint32) ([]byte, error) {
-	if pageNum > TableMaxPage {
-		return nil, fmt.Errorf("Tried to fetch page number out of bounds. %d > %d\n", pageNum, TableMaxPage)
+	if pageNum >= p.GetNumPages() {
+		p.NumPages = pageNum + 1
 	}
 
 	// Here we have cache miss; fetch from file
@@ -71,7 +81,7 @@ func (p *Pager) Flush(pageNum int, size uint32) error {
 		return fmt.Errorf("Error seeking: %d", ret)
 	}
 
-	if n, err := p.FileDescriptor.Write(p.Pages[pageNum][:size]); n < 0 || err != nil {
+	if n, err := p.FileDescriptor.Write(p.Pages[pageNum][:PageSize]); n < 0 || err != nil {
 		return fmt.Errorf("Error writing: %d", n)
 	}
 
