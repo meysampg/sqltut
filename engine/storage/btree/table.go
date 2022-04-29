@@ -15,9 +15,8 @@ const (
 )
 
 type Table struct {
-	NumRows     uint32
-	RootPageNum uint32
-	Pager       *Pager
+	rootPageNum uint32
+	pager       *Pager
 }
 
 func DbOpen(filename string) (*Table, error) {

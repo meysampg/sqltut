@@ -7,10 +7,10 @@ import (
 )
 
 type Pager struct {
-	FileDescriptor *os.File
-	FileLength     uint32
-	Pages          [][]byte
-	NumPages       uint32
+	fileDescriptor *os.File
+	fileLength     uint32
+	pages          [][]byte
+	numPages       uint32
 }
 
 func NewPager(filename string) (*Pager, error) {
@@ -29,59 +29,59 @@ func NewPager(filename string) (*Pager, error) {
 	}
 
 	return &Pager{
-		FileDescriptor: fd,
-		FileLength:     uint32(fileLength),
-		Pages:          make([][]byte, TableMaxPage, TableMaxPage),
-		NumPages:       uint32(fileLength) / PageSize,
+		fileDescriptor: fd,
+		fileLength:     uint32(fileLength),
+		pages:          make([][]byte, TableMaxPage, TableMaxPage),
+		numPages:       uint32(fileLength) / PageSize,
 	}, nil
 }
 
 func (p *Pager) GetNumPages() uint32 {
-	return p.NumPages
+	return p.numPages
 }
 
 func (p *Pager) GetPage(pageNum uint32) ([]byte, error) {
 	if pageNum >= p.GetNumPages() {
-		p.NumPages = pageNum + 1
+		p.numPages = pageNum + 1
 	}
 
 	// Here we have cache miss; fetch from file
-	if p.Pages[pageNum] == nil {
+	if p.pages[pageNum] == nil {
 		page := make([]byte, PageSize)
-		numPages := p.FileLength / PageSize
-		if p.FileLength%PageSize != 0 {
+		numPages := p.fileLength / PageSize
+		if p.fileLength%PageSize != 0 {
 			// we have partial page saved on disk
 			numPages++
 		}
 
 		// if we already have page on disk, will try to load it. Otherwise, we don't have this page and can skip this step.
 		if pageNum < numPages {
-			_, err := p.FileDescriptor.Seek(int64(pageNum*PageSize), io.SeekStart)
+			_, err := p.fileDescriptor.Seek(int64(pageNum*PageSize), io.SeekStart)
 			if err != nil {
 				return nil, err
 			}
-			n, err := p.FileDescriptor.Read(page)
+			n, err := p.fileDescriptor.Read(page)
 			if n < 0 || err != nil {
 				return nil, fmt.Errorf("Error reading file: %d", n) // f*ck the errno :))
 			}
 		}
 
-		p.Pages[pageNum] = page
+		p.pages[pageNum] = page
 	}
 
-	return p.Pages[pageNum], nil
+	return p.pages[pageNum], nil
 }
 
 func (p *Pager) Flush(pageNum int, size uint32) error {
-	if p.Pages[pageNum] == nil {
+	if p.pages[pageNum] == nil {
 		return fmt.Errorf("Tried to flush null page")
 	}
 
-	if ret, err := p.FileDescriptor.Seek(int64(pageNum*int(PageSize)), io.SeekStart); err != nil || ret < 0 {
+	if ret, err := p.fileDescriptor.Seek(int64(pageNum*int(PageSize)), io.SeekStart); err != nil || ret < 0 {
 		return fmt.Errorf("Error seeking: %d", ret)
 	}
 
-	if n, err := p.FileDescriptor.Write(p.Pages[pageNum][:PageSize]); n < 0 || err != nil {
+	if n, err := p.fileDescriptor.Write(p.pages[pageNum][:PageSize]); n < 0 || err != nil {
 		return fmt.Errorf("Error writing: %d", n)
 	}
 
