@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/meysampg/sqltut/engine"
+	"github.com/meysampg/sqltut/engine/utils"
 )
 
 const (
@@ -25,92 +26,81 @@ func DbOpen(filename string) (*Table, error) {
 		return nil, err
 	}
 
-	return &Table{
-		NumRows: pager.FileLength / RowSize,
-		Pager:   pager,
-	}, nil
-}
+	t := &Table{
+		rootPageNum: 0,
+		pager:       pager,
+	}
 
-func (t *Table) RowNums() uint32 {
-	return t.NumRows
+	if pager.numPages == 0 {
+		// TODO initialize
+	}
+
+	return t, nil
 }
 
 func (t *Table) GetPager() engine.Pager {
-	return t.Pager
+	return t.pager
 }
 
 func (t *Table) Close() (engine.ExecutionStatus, error) {
-	pager := t.Pager
+	pager := t.pager
 
 	// flush pages and clean-up them
 	numPages := int(pager.GetNumPages())
 	for i := 0; i < numPages; i++ {
-		if pager.Pages[i] == nil {
+		if pager.pages[i] == nil {
 			continue
 		}
 		if err := pager.Flush(i, PageSize); err != nil {
 			return engine.ExitFailure, err
 		}
-		pager.Pages[i] = nil
+		pager.pages[i] = nil
 	}
 
 	// close the DB file
-	if err := pager.FileDescriptor.Close(); err != nil {
+	if err := pager.fileDescriptor.Close(); err != nil {
 		return engine.ExitFailure, fmt.Errorf("Error closing db file.")
 	}
 
 	for i := 0; i < int(TableMaxPage); i++ {
-		if pager.Pages[i] != nil {
-			pager.Pages[i] = nil
+		if pager.pages[i] != nil {
+			pager.pages[i] = nil
 		}
 	}
 
 	return engine.ExecuteSuccess, nil
 }
 
-func cursorValue(cursor *Cursor) ([]byte, uint32, error) {
-	rowNum := cursor.RowNum
-	pageNum := rowNum
-	page, err := cursor.Table.GetPager().GetPage(pageNum)
-	if err != nil {
-		return nil, 0, err
-	}
-	rowOffset := rowNum
-	byteOffset := rowOffset * RowSize
-
-	return page, byteOffset, nil
-}
-
 func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
-	if t.NumRows > TableMaxPage {
-		return engine.ExecuteTableFull
-	}
+	//if t.numRows > TableMaxPage {
+	//	return engine.ExecuteTableFull
+	//}
 
-	cursor := TableEnd(t)
+	cursor := tableEnd(t)
 	page, byteOffset, err := cursorValue(cursor)
 	if err != nil {
 		fmt.Println(err)
 		return engine.ExecutePageFetchError
 	}
-	serializedRow := Serialize(binary.LittleEndian, row)
+	serializedRow := utils.Serialize(binary.LittleEndian, row)
 
 	copy(page[byteOffset:], serializedRow)
 
-	t.NumRows++
+	//t.NumRows++
 
 	return engine.ExecuteSuccess
 }
 
 func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 	var result []*engine.Row
-	cursor := TableStart(t)
-	for !cursor.EndOfTable {
+	cursor := tableStart(t)
+	for !cursor.endOfTable {
 		page, byteOffset, err := cursorValue(cursor)
 		if err != nil {
 			fmt.Println(err)
 			return nil, engine.ExecutePageFetchError
 		}
-		row := Deserialize(binary.LittleEndian, page[byteOffset:byteOffset+RowSize])
+		row := utils.Deserialize(binary.LittleEndian, page[byteOffset:byteOffset+RowSize])
 		if row == nil {
 			return nil, engine.ExecuteRowNotFound
 		}

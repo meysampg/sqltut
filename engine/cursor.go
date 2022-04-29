@@ -1,5 +1,5 @@
 package engine
 
 type Cursor interface {
-	Advance()
+	Advance() error
 }

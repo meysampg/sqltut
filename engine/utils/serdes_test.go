@@ -1,10 +1,10 @@
-package arraylike
+package utils
 
 import (
 	"encoding/binary"
-	"github.com/google/go-cmp/cmp"
-	"github.com/meysampg/sqltut/engine"
 	"testing"
+
+	"github.com/meysampg/sqltut/engine"
 )
 
 func TestSerialize(t *testing.T) {
@@ -55,7 +55,7 @@ func TestDeserialize(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Deserialize(binary.BigEndian, Serialize(binary.BigEndian, tt.want)); cmp.Equal(got, tt.want) {
+			if got := Deserialize(binary.BigEndian, Serialize(binary.BigEndian, tt.want)); got.String() != tt.want.String() {
 				t.Errorf("Deserialize() = %v, want %v", got, tt.want)
 			}
 		})

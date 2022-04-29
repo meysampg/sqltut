@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/meysampg/sqltut/engine"
+	"github.com/meysampg/sqltut/engine/utils"
 )
 
 const (
@@ -78,10 +79,10 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 	return engine.ExecuteSuccess, nil
 }
 
-func cursorValue(cursor *Cursor) ([]byte, uint32, error) {
-	rowNum := cursor.RowNum
+func cursorValue(cursor *cursor) ([]byte, uint32, error) {
+	rowNum := cursor.rowNum
 	pageNum := rowNum / RowsPerPage
-	page, err := cursor.Table.GetPager().GetPage(pageNum)
+	page, err := cursor.table.GetPager().GetPage(pageNum)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -96,13 +97,13 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 		return engine.ExecuteTableFull
 	}
 
-	cursor := TableEnd(t)
+	cursor := tableEnd(t)
 	page, byteOffset, err := cursorValue(cursor)
 	if err != nil {
 		fmt.Println(err)
 		return engine.ExecutePageFetchError
 	}
-	serializedRow := Serialize(binary.LittleEndian, row)
+	serializedRow := utils.Serialize(binary.LittleEndian, row)
 
 	copy(page[byteOffset:], serializedRow)
 
@@ -113,14 +114,14 @@ func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 
 func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 	var result []*engine.Row
-	cursor := TableStart(t)
-	for !cursor.EndOfTable {
+	cursor := tableStart(t)
+	for !cursor.endOfTable {
 		page, byteOffset, err := cursorValue(cursor)
 		if err != nil {
 			fmt.Println(err)
 			return nil, engine.ExecutePageFetchError
 		}
-		row := Deserialize(binary.LittleEndian, page[byteOffset:byteOffset+RowSize])
+		row := utils.Deserialize(binary.LittleEndian, page[byteOffset:byteOffset+RowSize])
 		if row == nil {
 			return nil, engine.ExecuteRowNotFound
 		}

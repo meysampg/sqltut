@@ -1,33 +1,33 @@
 package arraylike
 
-import "github.com/meysampg/sqltut/engine"
-
-type Cursor struct {
-	Table      engine.Storage
-	RowNum     uint32
-	EndOfTable bool
+type cursor struct {
+	table      *Table
+	rowNum     uint32
+	endOfTable bool
 }
 
-func TableStart(storage engine.Storage) *Cursor {
-	return &Cursor{
-		Table:      storage,
-		RowNum:     0,
-		EndOfTable: storage.RowNums() == 0,
+func tableStart(table *Table) *cursor {
+	return &cursor{
+		table:      table,
+		rowNum:     0,
+		endOfTable: table.RowNums() == 0,
 	}
 }
 
-func TableEnd(storage engine.Storage) *Cursor {
-	return &Cursor{
-		Table:      storage,
-		RowNum:     storage.RowNums(),
-		EndOfTable: true,
+func tableEnd(table *Table) *cursor {
+	return &cursor{
+		table:      table,
+		rowNum:     table.RowNums(),
+		endOfTable: true,
 	}
 }
 
-func (c *Cursor) Advance() {
-	c.RowNum++
+func (c *cursor) Advance() error {
+	c.rowNum++
 
-	if c.RowNum >= c.Table.RowNums() {
-		c.EndOfTable = true
+	if c.rowNum >= c.table.RowNums() {
+		c.endOfTable = true
 	}
+
+	return nil // BC
 }

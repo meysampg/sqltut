@@ -1,9 +1,9 @@
-package arraylike
+package utils
 
 import (
 	"encoding/binary"
+
 	"github.com/meysampg/sqltut/engine"
-	"github.com/meysampg/sqltut/engine/utils"
 )
 
 func Serialize(enc binary.ByteOrder, row *engine.Row) []byte {
@@ -39,7 +39,7 @@ func Deserialize(dec binary.ByteOrder, data []byte) *engine.Row {
 	}
 	row := &engine.Row{}
 
-	offsetSize := dec.Uint32(data[:utils.SizeOf(uint32(1))])
+	offsetSize := dec.Uint32(data[:SizeOf(uint32(1))])
 	idSize := dec.Uint32(data[offsetSize : 2*offsetSize])
 	idOffset := 4 * offsetSize
 	usernameSize := dec.Uint32(data[2*offsetSize : 3*offsetSize])
