@@ -8,41 +8,55 @@ type cursor struct {
 }
 
 func (c *cursor) Advance() error {
-	_, err := c.table.pager.GetPage(c.pageNum)
+	page, err := c.table.pager.GetPage(c.pageNum)
 	if err != nil {
 		return err
 	}
 
-	c.pageNum += 1
+	c.cellNum += 1
 
-	// TODO
+	if c.cellNum >= getLeafNodeNumCells(Orderness, page) {
+		c.endOfTable = true
+	}
 
 	return nil
 }
 
-func tableStart(table *Table) *cursor {
+func tableStart(table *Table) (*cursor, error) {
+	rootPage, err := table.pager.GetPage(table.rootPageNum)
+	if err != nil {
+		return nil, err
+	}
+	numCells := getLeafNodeNumCells(Orderness, rootPage)
+
 	return &cursor{
 		table:      table,
 		pageNum:    table.rootPageNum,
 		cellNum:    0,
-		endOfTable: false,
-	}
+		endOfTable: numCells == 0,
+	}, nil
 }
 
-func tableEnd(table *Table) *cursor {
+func tableEnd(table *Table) (*cursor, error) {
+	rootPage, err := table.pager.GetPage(table.rootPageNum)
+	if err != nil {
+		return nil, err
+	}
+	numCells := getLeafNodeNumCells(Orderness, rootPage)
+
 	return &cursor{
 		table:      table,
 		pageNum:    table.rootPageNum,
-		cellNum:    0,
-		endOfTable: false,
-	}
+		cellNum:    numCells,
+		endOfTable: true,
+	}, nil
 }
 
-func cursorValue(cursor *cursor) ([]byte, uint32, error) {
+func cursorValue(cursor *cursor) ([]byte, error) {
 	page, err := cursor.table.pager.GetPage(cursor.pageNum)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	return page, 0, nil
+	return leafNodeValue(Orderness, page, cursor.cellNum), nil
 }
