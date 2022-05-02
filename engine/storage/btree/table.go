@@ -1,7 +1,6 @@
 package btree
 
 import (
-	"encoding/binary"
 	"fmt"
 
 	"github.com/meysampg/sqltut/engine"
@@ -66,7 +65,7 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 		return engine.ExitFailure, fmt.Errorf("Error closing db file.")
 	}
 
-	for i := 0; i < int(TableMaxPage); i++ {
+	for i := 0; i < numPages; i++ {
 		if pager.pages[i] != nil {
 			pager.pages[i] = nil
 		}
@@ -76,7 +75,7 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 }
 
 func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
-	cursor, err := tableEnd(t)
+	cursor, err := tableFind(t, row.Id)
 	if err != nil {
 		return engine.ExecutePageFetchError
 	}
@@ -101,7 +100,7 @@ func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 			fmt.Println(err)
 			return nil, engine.ExecutePageFetchError
 		}
-		row := utils.Deserialize(binary.LittleEndian, page[0:0+RowSize])
+		row := utils.Deserialize(Orderness, page)
 		if row == nil {
 			return nil, engine.ExecuteRowNotFound
 		}

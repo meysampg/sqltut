@@ -14,6 +14,7 @@ const (
 	ExecuteTableEmpty     ExecutionStatus = 0xB03
 	ExecuteRowNotFound    ExecutionStatus = 0xB04
 	ExecutePageFetchError ExecutionStatus = 0xB05
+	ExecuteDuplicateKey   ExecutionStatus = 0xB06
 
 	MetaCommandSuccess      ExecutionStatus = 0xC01
 	MetaUnrecognizedCommand ExecutionStatus = 0xC02

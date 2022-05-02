@@ -8,11 +8,11 @@ import (
 	"github.com/meysampg/sqltut/engine/utils"
 )
 
-type NodeType string
+type NodeType uint8
 
 const (
-	NodeInternal NodeType = "node_internal"
-	NodeLeaf     NodeType = "node_leaf"
+	NodeInternal NodeType = 0
+	NodeLeaf     NodeType = 1
 )
 
 const (
@@ -106,10 +106,23 @@ func setLeafNodeValue(order binary.ByteOrder, node []byte, cellNum uint32, row *
 	bytes := utils.Serialize(order, row)
 	offset := offsetOfCell(cellNum) + LeafNodeValueOffset
 
-	copy(bytes, node[offset:offset+LeafNodeValueSize])
+	copy(node[offset:offset+LeafNodeValueSize], bytes)
+}
+
+func nodeType(order binary.ByteOrder, node []byte) []byte {
+	return node[NodeTypeOffset : NodeTypeOffset+NodeTypeSize]
+}
+
+func getNodeType(order binary.ByteOrder, node []byte) NodeType {
+	return NodeType(nodeType(order, node)[0])
+}
+
+func setNodeType(order binary.ByteOrder, node []byte, typ NodeType) {
+	copy(nodeType(order, node), []byte{byte(typ)})
 }
 
 func initializeLeafNode(order binary.ByteOrder, node []byte) {
+	setNodeType(order, node, NodeLeaf)
 	setLeafNodeNumCells(order, node, 0)
 }
 
@@ -122,6 +135,17 @@ func leafNodeInsert(c *cursor, key uint32, value *engine.Row) (engine.ExecutionS
 	numCells := getLeafNodeNumCells(Orderness, node)
 	if numCells >= LeafNodeMaxCells {
 		return engine.ExitFailure, fmt.Errorf("Need to implement splitting a leaf node.")
+	}
+
+	if c.cellNum < numCells {
+		if getLeafNodeKey(Orderness, node, c.cellNum) == key {
+			return engine.ExecuteDuplicateKey, nil
+		}
+
+		var i uint32
+		for i = numCells; i > c.cellNum; i-- {
+			copy(node[offsetOfCell(i):offsetOfCell(i+1)], node[offsetOfCell(i-1):offsetOfCell(i)])
+		}
 	}
 
 	setLeafNodeNumCells(Orderness, node, getLeafNodeNumCells(Orderness, node)+1)

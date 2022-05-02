@@ -1,5 +1,7 @@
 package btree
 
+import "fmt"
+
 type cursor struct {
 	table      *Table
 	pageNum    uint32
@@ -37,19 +39,51 @@ func tableStart(table *Table) (*cursor, error) {
 	}, nil
 }
 
-func tableEnd(table *Table) (*cursor, error) {
-	rootPage, err := table.pager.GetPage(table.rootPageNum)
+func tableFind(table *Table, key uint32) (*cursor, error) {
+	node, err := table.pager.GetPage(table.rootPageNum)
 	if err != nil {
 		return nil, err
 	}
-	numCells := getLeafNodeNumCells(Orderness, rootPage)
 
-	return &cursor{
-		table:      table,
-		pageNum:    table.rootPageNum,
-		cellNum:    numCells,
-		endOfTable: true,
-	}, nil
+	if getNodeType(Orderness, node) == NodeLeaf {
+		return leafNodeFind(table, table.rootPageNum, key)
+	}
+
+	return nil, fmt.Errorf("Need to implement searching an internal node")
+}
+
+func leafNodeFind(table *Table, pageNum uint32, key uint32) (*cursor, error) {
+	node, err := table.pager.GetPage(pageNum)
+	if err != nil {
+		return nil, err
+	}
+
+	cur := &cursor{
+		table:   table,
+		pageNum: pageNum,
+	}
+
+	var minIndex uint32
+	lastIndex := getLeafNodeNumCells(Orderness, node)
+
+	for minIndex != lastIndex {
+		index := (minIndex + lastIndex) / 2
+		keyAtIndex := getLeafNodeKey(Orderness, node, index)
+		if keyAtIndex == key {
+			minIndex = index
+			break
+		}
+
+		if key < keyAtIndex {
+			lastIndex = index
+		} else {
+			minIndex = index + 1
+		}
+	}
+
+	cur.cellNum = minIndex
+
+	return cur, nil
 }
 
 func cursorValue(cursor *cursor) ([]byte, error) {

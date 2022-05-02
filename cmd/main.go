@@ -85,6 +85,8 @@ func main() {
 			fmt.Println("ID must be positive.")
 		case engine.ExecutePageFetchError:
 			os.Exit(int(engine.ExecutePageFetchError))
+		case engine.ExecuteDuplicateKey:
+			fmt.Println("Error: Duplicate key.")
 		}
 	}
 }
