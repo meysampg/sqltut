@@ -9,11 +9,9 @@ func processMeta(command []byte, storage Storage) ExecutionStatus {
 	if Equal(command, ".exit") {
 		closeStorage(storage)
 		os.Exit(0)
-	} else {
-		return MetaUnrecognizedCommand
 	}
 
-	return MetaCommandSuccess
+	return storage.ExecuteMeta(command)
 }
 
 func closeStorage(storage Storage) {

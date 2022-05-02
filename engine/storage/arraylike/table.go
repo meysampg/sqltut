@@ -79,6 +79,10 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 	return engine.ExecuteSuccess, nil
 }
 
+func (t *Table) ExecuteMeta(command []byte) engine.ExecutionStatus {
+	return engine.MetaUnrecognizedCommand
+}
+
 func cursorValue(cursor *cursor) ([]byte, uint32, error) {
 	rowNum := cursor.rowNum
 	pageNum := rowNum / RowsPerPage

@@ -5,4 +5,5 @@ type Storage interface {
 	Select() ([]*Row, ExecutionStatus)
 	Close() (ExecutionStatus, error)
 	GetPager() Pager
+	ExecuteMeta(command []byte) ExecutionStatus
 }

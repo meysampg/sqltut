@@ -2,6 +2,7 @@ package btree
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	"github.com/meysampg/sqltut/engine"
 	"github.com/meysampg/sqltut/engine/utils"
@@ -47,6 +48,8 @@ const (
 	LeafNodeSpaceForCells = PageSize - uint32(LeafNodeHeaderSize)
 	LeafNodeMaxCells      = LeafNodeSpaceForCells / LeafNodeCellSize
 )
+
+var Orderness binary.ByteOrder = binary.LittleEndian
 
 func leafNodeNumCells(order binary.ByteOrder, node []byte) []byte {
 	return node[LeafNodeNumCellsOffset : LeafNodeNumCellsOffset+LeafNodeNumCellsSize]
@@ -108,6 +111,23 @@ func setLeafNodeValue(order binary.ByteOrder, node []byte, cellNum uint32, row *
 
 func initializeLeafNode(order binary.ByteOrder, node []byte) {
 	setLeafNodeNumCells(order, node, 0)
+}
+
+func leafNodeInsert(c *cursor, key uint32, value *engine.Row) (engine.ExecutionStatus, error) {
+	node, err := c.table.pager.GetPage(c.pageNum)
+	if err != nil {
+		return engine.ExitFailure, err
+	}
+
+	numCells := getLeafNodeNumCells(Orderness, node)
+	if numCells >= LeafNodeMaxCells {
+		return engine.ExitFailure, fmt.Errorf("Need to implement splitting a leaf node.")
+	}
+
+	setLeafNodeNumCells(Orderness, node, getLeafNodeNumCells(Orderness, node)+1)
+	setLeafNodeCell(Orderness, node, c.cellNum, key, value)
+
+	return engine.ExecuteSuccess, nil
 }
 
 func offsetOfCell(cell uint32) uint32 {
