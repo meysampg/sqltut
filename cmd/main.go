@@ -1,14 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/meysampg/sqltut/engine"
 	"github.com/meysampg/sqltut/engine/storage/arraylike"
 	"github.com/meysampg/sqltut/engine/storage/btree"
+
+	prompt "github.com/c-bata/go-prompt"
 )
 
 var (
@@ -23,26 +25,6 @@ func init() {
 	flag.Parse()
 }
 
-func prompt() {
-	fmt.Print("db > ")
-}
-
-func readInput(reader *bufio.Reader) ([]byte, error) {
-	var result []byte
-	var isPrefix bool = true
-
-	for isPrefix {
-		l, prefix, err := reader.ReadLine()
-		if err != nil {
-			return nil, err
-		}
-		isPrefix = prefix
-		result = append(result, l...)
-	}
-
-	return result, nil
-}
-
 func getEngine(typ, path string) (engine.Storage, error) {
 	switch typ {
 	case "arraylike":
@@ -54,8 +36,38 @@ func getEngine(typ, path string) (engine.Storage, error) {
 	}
 }
 
+func cliOptions() []prompt.Option {
+	histories, err := LoadHistory()
+	if err != nil {
+		log.Printf("Load history fails! %s", err)
+	}
+
+	options := []prompt.Option{
+		prompt.OptionPrefix(">>> "),
+		prompt.OptionInputTextColor(prompt.Yellow),
+		prompt.OptionSuggestionBGColor(prompt.Purple),
+		prompt.OptionDescriptionBGColor(prompt.Blue),
+		prompt.OptionSelectedSuggestionBGColor(prompt.Blue),
+		prompt.OptionSelectedDescriptionBGColor(prompt.Purple),
+		prompt.OptionSelectedSuggestionTextColor(prompt.Red),
+		prompt.OptionHistory(histories),
+	}
+
+	return options
+}
+
+func completer(in prompt.Document) []prompt.Suggest {
+	s := []prompt.Suggest{
+		{Text: "insert", Description: "insert ID username email"},
+		{Text: "select", Description: "show all stored users"},
+		{Text: ".btree", Description: "show the saved btree (on btree engine)"},
+		{Text: ".constants", Description: "show constants (on btree engine)"},
+		{Text: ".exit", Description: "flush the db and exit"},
+	}
+	return prompt.FilterHasPrefix(s, in.GetWordBeforeCursor(), true)
+}
+
 func main() {
-	reader := bufio.NewReader(os.Stdin)
 	table, err := getEngine(dbEngine, dbPath)
 	if err != nil {
 		fmt.Println("Unable to open file")
@@ -63,9 +75,9 @@ func main() {
 	}
 
 	for {
-		prompt()
-		l, _ := readInput(reader)
-		switch engine.Process(l, table) {
+		l := prompt.Input(">>> ", completer, cliOptions()...)
+		Persist(l)
+		switch engine.Process([]byte(l), table) {
 		case engine.MetaCommandSuccess:
 			continue
 		case engine.ExecuteTableFull:

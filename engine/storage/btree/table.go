@@ -106,7 +106,11 @@ func (t *Table) Select() ([]*engine.Row, engine.ExecutionStatus) {
 			return nil, engine.ExecuteRowNotFound
 		}
 		result = append(result, row)
-		cursor.Advance()
+		err = cursor.Advance()
+		if err != nil {
+			fmt.Println(err)
+			return nil, engine.ExecutePageFetchError
+		}
 	}
 
 	return result, engine.ExecuteSuccess
