@@ -36,6 +36,7 @@ func DbOpen(filename string) (*Table, error) {
 		}
 
 		initializeLeafNode(Orderness, rootNode)
+		setIsNodeRoot(Orderness, rootNode, true)
 	}
 
 	return t, nil
@@ -119,8 +120,7 @@ func (t *Table) ExecuteMeta(command []byte) engine.ExecutionStatus {
 		return engine.MetaCommandSuccess
 	} else if engine.Equal(command, ".btree") {
 		fmt.Println("Tree:")
-		node, _ := t.pager.GetPage(0)
-		printLeafNode(node)
+		printTree(t.pager, 0, 0)
 
 		return engine.MetaCommandSuccess
 	}
@@ -137,11 +137,37 @@ func printConstants() {
 	fmt.Printf("LEAF_NODE_MAX_CELLS: %d\n", LeafNodeMaxCells)
 }
 
-func printLeafNode(node []byte) {
-	numCells := getLeafNodeNumCells(Orderness, node)
-	fmt.Printf("leaf (size %d)\n", numCells)
-	var i uint32
-	for i = 0; i < numCells; i++ {
-		fmt.Printf("  - %d : %d\n", i, getLeafNodeKey(Orderness, node, i))
+func indent(level uint32) {
+	for i := uint32(0); i < level; i++ {
+		fmt.Print("  ")
+	}
+}
+
+func printTree(pager *Pager, pageNum uint32, indentationLevel uint32) {
+	node, _ := pager.GetPage(pageNum)
+	var numKeys, child uint32
+
+	switch getNodeType(Orderness, node) {
+	case NodeLeaf:
+		numKeys = getLeafNodeNumCells(Orderness, node)
+		indent(indentationLevel)
+		fmt.Printf("- leaf (size %d)\n", numKeys)
+		for i := uint32(0); i < numKeys; i++ {
+			indent(indentationLevel + 1)
+			fmt.Printf("- %d\n", getLeafNodeKey(Orderness, node, i))
+		}
+	case NodeInternal:
+		numKeys = getInternalNodeNumKeys(Orderness, node)
+		indent(indentationLevel)
+		fmt.Printf("- internal (size %d)\n", numKeys)
+		for i := uint32(0); i < numKeys; i++ {
+			child, _, _ = getInternalNodeChild(Orderness, node, i)
+			printTree(pager, child, indentationLevel+1)
+
+			indent(indentationLevel + 1)
+			fmt.Printf("- key %d\n", getInternalNodeKey(Orderness, node, i))
+		}
+		child = getInternalNodeRightChild(Orderness, node)
+		printTree(pager, child, indentationLevel+1)
 	}
 }
