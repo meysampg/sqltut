@@ -1,5 +1,7 @@
 SQLTut
 ======
+![sqltut](https://user-images.githubusercontent.com/1416085/166968245-d3a15386-d88e-4f74-8f20-09a285ffe34d.gif)
+
 ```shell
 $ ./cmd -h
 Usage of ./cmd:
