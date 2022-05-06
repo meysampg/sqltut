@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="sqltut btree" type="GoApplicationRunConfiguration" factoryName="Go Application">
+  <configuration default="false" name="sqltut btree" type="GoApplicationRunConfiguration" factoryName="Go Application" show_console_on_std_err="true" show_console_on_std_out="true">
     <module name="sqltut" />
     <working_directory value="$PROJECT_DIR$" />
     <parameters value="-engine btree" />
