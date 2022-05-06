@@ -191,7 +191,7 @@ func createNewRoot(table *Table, rightChildPageNum uint32) (engine.ExecutionStat
 	initializeInternalNode(Orderness, root)
 	setIsNodeRoot(Orderness, root, true)
 	setInternalNodeNumKeys(Orderness, root, 1)
-	status, err := setInternalNodeChild(Orderness, root, 0, leftChildPageNum)
+	status, err := setInternalNodeChildPage(Orderness, root, 0, leftChildPageNum)
 	if err != nil {
 		return status, err
 	}
@@ -271,22 +271,42 @@ func internalNodeChild(order binary.ByteOrder, node []byte, childNum uint32) ([]
 	return internalNodeCell(order, node, childNum), 0, nil
 }
 
-func getInternalNodeChild(order binary.ByteOrder, node []byte, childNum uint32) (uint32, engine.ExecutionStatus, error) {
+func getInternalNodeChildKey(order binary.ByteOrder, node []byte, childNum uint32) (uint32, engine.ExecutionStatus, error) {
 	bytes, status, err := internalNodeChild(order, node, childNum)
 	if err != nil || status != 0 {
 		return 0, status, err
 	}
 
-	return order.Uint32(bytes), 0, nil
+	return order.Uint32(bytes[InternalNodeKeyOffset : InternalNodeKeyOffset+InternalNodeKeySize]), 0, nil
 }
 
-func setInternalNodeChild(order binary.ByteOrder, node []byte, childNum uint32, pageNum uint32) (engine.ExecutionStatus, error) {
+func setInternalNodeChildKey(order binary.ByteOrder, node []byte, childNum uint32, key uint32) (engine.ExecutionStatus, error) {
 	bytes, status, err := internalNodeChild(order, node, childNum)
 	if err != nil || status != 0 {
 		return status, err
 	}
 
-	order.PutUint32(bytes, pageNum)
+	order.PutUint32(bytes[InternalNodeKeyOffset:InternalNodeKeyOffset+InternalNodeKeySize], key)
+
+	return 0, nil
+}
+
+func getInternalNodeChildPage(order binary.ByteOrder, node []byte, childNum uint32) (uint32, engine.ExecutionStatus, error) {
+	bytes, status, err := internalNodeChild(order, node, childNum)
+	if err != nil || status != 0 {
+		return 0, status, err
+	}
+
+	return order.Uint32(bytes[InternalNodeChildOffset : InternalNodeChildOffset+InternalNodeChildSize]), 0, nil
+}
+
+func setInternalNodeChildPage(order binary.ByteOrder, node []byte, childNum uint32, pageNum uint32) (engine.ExecutionStatus, error) {
+	bytes, status, err := internalNodeChild(order, node, childNum)
+	if err != nil || status != 0 {
+		return status, err
+	}
+
+	order.PutUint32(bytes[InternalNodeChildOffset:InternalNodeChildOffset+InternalNodeChildSize], pageNum)
 
 	return 0, nil
 }
@@ -350,23 +370,23 @@ func leafNodeSplitAndInsert(c *cursor, key uint32, value *engine.Row) (engine.Ex
 
 	// start from the top level, we put upper cells into new node, the new insert
 	// in new or old node and let lower cells to remain on the old node.
-	var destination []byte
+	var destinationNode []byte
 	for i := LeafNodeMaxCells; i != 0; i-- {
 		if i >= LeafNodeLeftSplitCount {
-			destination = newPage
+			destinationNode = newPage
 		} else {
-			destination = oldPage
+			destinationNode = oldPage
 		}
 
 		cellNum := i % LeafNodeLeftSplitCount
-		cell := leafNodeCell(Orderness, oldPage, cellNum)
+		destination := leafNodeCell(Orderness, destinationNode, cellNum)
 
 		if c.cellNum == i { // new element to insert
-			setLeafNodeCell(Orderness, destination, cellNum, key, value)
-		} else if c.cellNum > i { // is not new element and just put elements from old page to old page
-			copy(leafNodeCell(Orderness, destination, cellNum), cell)
-		} else { // is not new element and copy from old page to new page
-			copy(leafNodeCell(Orderness, destination, cellNum-1), cell)
+			setLeafNodeCell(Orderness, destinationNode, cellNum, key, value)
+		} else if c.cellNum > i { // i is less than the requested cell, so cell address is as was
+			copy(destination, leafNodeCell(Orderness, oldPage, i))
+		} else { // the requested cell num is less than i, so we must get cell from old page with index-1
+			copy(destination, leafNodeCell(Orderness, oldPage, i-1))
 		}
 	}
 

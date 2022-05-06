@@ -1,6 +1,8 @@
 package btree
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type cursor struct {
 	table      *Table

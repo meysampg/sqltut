@@ -20,4 +20,6 @@ const (
 	MetaUnrecognizedCommand ExecutionStatus = 0xC02
 
 	ExitFailure ExecutionStatus = 0xD01
+
+	TODO ExecutionStatus = 0xE01
 )

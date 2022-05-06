@@ -78,6 +78,10 @@ func (t *Table) Close() (engine.ExecutionStatus, error) {
 func (t *Table) Insert(row *engine.Row) engine.ExecutionStatus {
 	cursor, err := tableFind(t, row.Id)
 	if err != nil {
+		if err.Error() == "Need to implement searching an internal node" {
+			return engine.TODO
+		}
+
 		return engine.ExecutePageFetchError
 	}
 
@@ -165,7 +169,7 @@ func printTree(pager *Pager, pageNum uint32, indentationLevel uint32) {
 		indent(indentationLevel)
 		fmt.Printf("- internal (size %d)\n", numKeys)
 		for i := uint32(0); i < numKeys; i++ {
-			child, _, _ = getInternalNodeChild(Orderness, node, i)
+			child, _, _ = getInternalNodeChildPage(Orderness, node, i)
 			printTree(pager, child, indentationLevel+1)
 
 			indent(indentationLevel + 1)

@@ -136,6 +136,9 @@ func main() {
 			os.Exit(int(engine.ExecutePageFetchError))
 		case engine.ExecuteDuplicateKey:
 			fmt.Println("Error: Duplicate key.")
+		case engine.TODO:
+			fmt.Println("Need to implement searching an internal node")
+			os.Exit(int(engine.TODO))
 		}
 	}
 }
