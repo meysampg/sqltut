@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -16,11 +17,13 @@ import (
 var (
 	dbPath   string
 	dbEngine string
+	cli      string
 )
 
 func init() {
 	flag.StringVar(&dbPath, "db-path", "./db", "Path of the DB file")
 	flag.StringVar(&dbEngine, "engine", "arraylike", "Engine to store and query")
+	flag.StringVar(&cli, "cli", "cli", "CLI to use (cli and complete)")
 
 	flag.Parse()
 }
@@ -33,6 +36,40 @@ func getEngine(typ, path string) (engine.Storage, error) {
 		return btree.DbOpen(path)
 	default:
 		return nil, fmt.Errorf("Engine not found, %s", typ)
+	}
+}
+
+func simpleInput(reader *bufio.Reader) ([]byte, error) {
+	var result []byte
+	var isPrefix bool = true
+
+	fmt.Print("db > ")
+	for isPrefix {
+		l, prefix, err := reader.ReadLine()
+		if err != nil {
+			return nil, err
+		}
+		isPrefix = prefix
+		result = append(result, l...)
+	}
+
+	return result, nil
+}
+
+func getInput() func() []byte {
+	switch cli {
+	case "complete":
+		return func() []byte {
+			l := prompt.Input(">>> ", completer, cliOptions()...)
+			Persist(l)
+			return []byte(l)
+		}
+	default:
+		reader := bufio.NewReader(os.Stdin)
+		return func() []byte {
+			l, _ := simpleInput(reader)
+			return l
+		}
 	}
 }
 
@@ -74,10 +111,10 @@ func main() {
 		os.Exit(int(engine.ExitFailure))
 	}
 
+	input := getInput()
 	for {
-		l := prompt.Input(">>> ", completer, cliOptions()...)
-		Persist(l)
-		switch engine.Process([]byte(l), table) {
+		l := input()
+		switch engine.Process(l, table) {
 		case engine.MetaCommandSuccess:
 			continue
 		case engine.ExecuteTableFull:
